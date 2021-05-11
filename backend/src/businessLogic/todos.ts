@@ -1,6 +1,6 @@
 import * as uuid from 'uuid'
 
-import {CreateTodoRequest} from "../requests/CreateTodoRequest";
+ import {CreateTodoRequest} from "../requests/CreateTodoRequest";
 import {TodosAccess} from "../dataLayer/todosAccess";
 import {TodoItem} from "../models/TodoItem";
 import {UpdateTodoRequest} from "../requests/UpdateTodoRequest";
@@ -26,13 +26,12 @@ export async function createTodo(createTodoRequest: CreateTodoRequest,
     name: createTodoRequest.name,
     dueDate: createTodoRequest.dueDate,
     done: false
-    // attachmentUrl??
   })
 
   return todoItem
 }
 
-export async function getTodoForUser(todoId: string,
+/*export async function getTodoForUser(todoId: string,
                                      userId: string): Promise<TodoItem> {
 
   const todoItem = await todosAccess.getTodo(userId, todoId)
@@ -42,40 +41,24 @@ export async function getTodoForUser(todoId: string,
   }
 
   return todoItem
-}
+}*/
 
 export async function updateTodo(updateTodoRequest: UpdateTodoRequest,
                                  todoId: string,
                                  userId: string): Promise<TodoUpdate> {
-
-  const todoItem = await getTodoForUser(todoId, userId)
-
-  todoItem.name = updateTodoRequest.name
-  todoItem.dueDate = updateTodoRequest.dueDate
-  todoItem.done = updateTodoRequest.done
-
-  const item = await todosAccess.updateTodo(todoItem)
+  const item = await todosAccess.updateTodo(updateTodoRequest, todoId, userId)
 
   return item
 }
 
 export async function deleteTodo(todoId: string,
                                  userId: string): Promise<void> {
-
-  const todoItem = await getTodoForUser(todoId, userId)
-
-  await todosAccess.deleteTodo(userId, todoItem.todoId)
+  await todosAccess.deleteTodo(userId, todoId)
 }
 
-export async function generateUrlImage(userId: string, todoId: string): Promise<TodoItem> {
+export async function generateUrlImage(userId: string, todoId: string): Promise<string> {
+  const attachmentUrl = imagesAccess.getUploadUrl(todoId)
+  await todosAccess.uploadUrlForUser(todoId, userId, attachmentUrl)
 
-  const todoItem = await getTodoForUser(todoId, userId)
-
-  const imageId = uuid.v4()
-  imagesAccess.generateSignedUploadUrl(imageId)
-  todoItem.attachmentUrl = imagesAccess.getUploadUrl(imageId)
-
-  await todosAccess.updateTodo(todoItem)
-
-  return todoItem
+  return imagesAccess.generateSignedUploadUrl(todoId)
 }

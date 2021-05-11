@@ -11,32 +11,15 @@ export class ImagesAccess {
 
 
     getUploadUrl(imageName: string): string {
-        /*const parseBody = JSON.parse(event.body)
-
-        const newItem = {
-            imageId: imageId,
-            groupId: groupId,
-            timestamp: new Date().toISOString(),
-            ...parseBody,
-            imageUrl: `https://${s3BucketName}.s3.amazonaws.com/${imageId}`
-        }
-
-        await docClient.put({
-            TableName: imagesTable,
-            Item: newItem
-        }).promise()
-
-        return newItem*/
-
         return `https://${this.s3BucketName}.s3.amazonaws.com/${imageName}`
     }
 
-    generateSignedUploadUrl(imageName: string) {
+    generateSignedUploadUrl(imageName: string): string {
         return this.s3Client.getSignedUrl('putObject', {
             Bucket: this.s3BucketName,
             Key: `${imageName}`,
             Expires: this.signedUrlexpiration
-        })
+        }) as string
     }
 }
 

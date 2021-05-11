@@ -9,7 +9,7 @@ plugins:
 
 
 package:
-  individually: true # consider => export NODE_OPTIONS=--max_old_space_size=4096
+  individually: true # consider => export NODE_OPTIONS=--max_old_space_size=8096
 
 provider:
   name: aws
@@ -24,51 +24,9 @@ provider:
 
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
-#    IMAGES_TABLE: Images-${self:provider.stage}
-#    IMAGE_ID_INDEX: ImageIdIndex
     TODOS_INDEX_NAME: userIdIndex
-#    CONNECTIONS_TABLE: Connections-${self:provider.stage}
     IMAGES_S3_BUCKET: serverless-todos-images-${self:provider.stage}-xthian82
     SIGNED_URL_EXPIRATION: 300
-    #AUTH_0_SECRET_ID: Auth0Secret-${self:provider.stage}
-    #AUTH_0_SECRET_FIELD: auth0Secret
-
-#  iamRoleStatements:
-#    - Effect: Allow
-#      Action:
-#        - dynamodb:Scan
-#        - dynamodb:PutItem
-#        - dynamodb:GetItem
-#      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
-#    - Effect: Allow
-#      Action:
-#        - dynamodb:PutItem
-#        - dynamodb:Query
-#      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}
-#    - Effect: Allow
-#      Action:
-#        - dynamodb:Query
-#      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}/index/${self:provider.environment.IMAGE_ID_INDEX}
-#    - Effect: Allow
-#      Action:
-#        - s3:PutObject
-#        - s3:GetObject
-#      Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
-#    - Effect: Allow
-#      Action:
-#        - dynamodb:Scan
-#        - dynamodb:PutItem
-#        - dynamodb:DeleteItem
-#      Resource: arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}
-
-#    - Effect: Allow
-#      Action:
-#        - secretsmanager:GetSecretValue
-#      Resource: !Ref Auth0Secret
-#    - Effect: Allow
-#      Action:
-#        - kms:Decrypt
-#      Resource: !GetAtt KMSKey.Arn
 
 custom:
   topicName: imagesTopic-${self:provider.stage}
@@ -82,25 +40,12 @@ custom:
       - name: TodoRequest
         contentType: application/json
         schema: ${file(models/create-todo-request.json)}
-      - name: ImageRequest
-        contentType: application/json
-        schema: ${file(models/create-image-request.json)}
 
 functions:
 
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
-#    iamRoleStatements:
-#      - Effect: Allow
-#        Action:
-#          - secretsmanager:GetSecretValue
-#        Resource: !Ref Auth0Secret
-#      - Effect: Allow
-#        Action:
-#          - kms:Decrypt
-#        Resource: !GetAtt KMSKey.Arn
 
-  # TODO: Configure this function
   GetTodos:
     handler: src/lambda/http/getTodos.handler
     events:
@@ -114,17 +59,12 @@ functions:
         Action:
           - dynamodb:Query
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
-#      - Effect: Allow
-#        Action:
-#          - dynamodb:GetItem
-#        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}
       - Effect: Allow
         Action:
           - dynamodb:Query
           - dynamodb:Scan
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_INDEX_NAME}
 
-  # TODO: Configure this function
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
@@ -145,7 +85,6 @@ functions:
           - dynamodb:PutItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
-  # TODO: Configure this function
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
     events:
@@ -163,15 +102,17 @@ functions:
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:PutItem
+          - dynamodb:UpdateItem
           - dynamodb:Query
+          - dynamodb:GetItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
       - Effect: Allow
         Action:
           - dynamodb:Query
+          - dynamodb:UpdateItem
+          - dynamodb:GetItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_INDEX_NAME}
 
-  # TODO: Configure this function
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
@@ -184,9 +125,14 @@ functions:
       - Effect: Allow
         Action:
           - dynamodb:DeleteItem
+          - dynamodb:GetItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - dynamodb:DeleteItem
+          - dynamodb:GetItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_INDEX_NAME}
 
-  # TODO: Configure this function
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
@@ -195,80 +141,21 @@ functions:
           authorizer: Auth
           path: todos/{todoId}/attachment
           cors: true
-          reqValidatorName: RequestBodyValidator
-          documentation:
-            summary: Create a new image for a todo
-            description: Create a new image for a todo
-            requestModels:
-              'application/json': ImageRequest
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:PutItem
+          - dynamodb:UpdateItem
           - dynamodb:Query
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
       - Effect: Allow
         Action:
           - dynamodb:Query
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_INDEX_NAME}
-
-#      - Effect: Allow
-#          Action:
-#            - dynamodb:PutItem
-#            - dynamodb:Query
-#          Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}
-#      - Effect: Allow
-#          Action:
-#            - dynamodb:Query
-#          Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}/index/${self:provider.environment.IMAGE_ID_INDEX}
-#      - Effect: Allow
-#          Action:
-#            - s3:PutObject
-#            - s3:GetObject
-#          Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
-#      - Effect: Allow
-#          Action:
-#            - dynamodb:Query
-#            - dynamodb:PutItem
-#          Resource: arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}
-
-#  SendUploadNotifications:
-#    environment:
-#      STAGE: ${self:provider.stage}
-#      API_ID:
-#        Ref: WebsocketsApi
-#    handler: src/lambda/s3/sendNotifications.handler
-#    events:
-#      - sns:
-#          arn:
-#            Fn::Join:
-#              - ':'
-#              - - arn:aws:sns
-#                - Ref: AWS::Region
-#                - Ref: AWS::AccountId
-#                - ${self:custom.topicName}
-#          topicName: ${self:custom.topicName}
-#
-#  ConnectHandler:
-#    handler: src/lambda/websocket/connect.handler
-#    events:
-#      - websocket:
-#          route: $connect
-#
-#  DisconnectHandler:
-#    handler: src/lambda/websocket/disconnect.handler
-#    events:
-#      - websocket:
-#          route: $disconnect
-#
-#  SyncWithElasticsearch:
-#    environment:
-#      ES_ENDPOINT: !GetAtt ImagesSearch.DomainEndpoint
-#    handler: src/lambda/dynamoDb/elasticSearchSync.handler
-#    events:
-#      - stream:
-#          type: dynamodb
-#          arn: !GetAtt ImagesDynamoDBTable.StreamArn
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+          - s3:GetObject
+        Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
 
 resources:
   Resources:
@@ -288,16 +175,14 @@ resources:
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
-          - AttributeName: userId # partition
+          - AttributeName: userId
             AttributeType: S
-          - AttributeName: dueDate # sortKey
-            AttributeType: S
-          - AttributeName: todoId # indexKey
+          - AttributeName: todoId
             AttributeType: S
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
-          - AttributeName: dueDate
+          - AttributeName: todoId
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.TODOS_TABLE}
@@ -311,47 +196,6 @@ resources:
             Projection:
               ProjectionType: ALL # What attributes will be copied to an index
 
-#    ImagesDynamoDBTable:
-#      Type: AWS::DynamoDB::Table
-#      Properties:
-#        AttributeDefinitions:
-#          - AttributeName: todoId
-#            AttributeType: S
-#          - AttributeName: timestamp
-#            AttributeType: S
-#          - AttributeName: imageId
-#            AttributeType: S
-#        KeySchema:
-#          - AttributeName: todoId
-#            KeyType: HASH
-#          - AttributeName: timestamp
-#            KeyType: RANGE
-#        BillingMode: PAY_PER_REQUEST
-#        StreamSpecification:
-#          StreamViewType: NEW_IMAGE
-#        TableName: ${self:provider.environment.IMAGES_TABLE}
-#        GlobalSecondaryIndexes:
-#          - IndexName: ${self:provider.environment.IMAGE_ID_INDEX}
-#            KeySchema:
-#              - AttributeName: imageId
-#                KeyType: HASH
-#            Projection:
-#              ProjectionType: ALL
-
-#    WebSocketConnectionsDynamoDBTable:
-#      Type: AWS::DynamoDB::Table
-#      Properties:
-#        AttributeDefinitions:
-#          -
-#            AttributeName: id
-#            AttributeType: S
-#        KeySchema:
-#          -
-#            AttributeName: id
-#            KeyType: HASH
-#        BillingMode: PAY_PER_REQUEST
-#        TableName: ${self:provider.environment.CONNECTIONS_TABLE}
-
     RequestBodyValidator:
       Type: AWS::ApiGateway::RequestValidator
       Properties:
@@ -363,13 +207,8 @@ resources:
 
     AttachmentsBucket:
       Type: AWS::S3::Bucket
-      #DependsOn: SNSTopicPolicy
       Properties:
         BucketName: ${self:provider.environment.IMAGES_S3_BUCKET}
-#        NotificationConfiguration:
-#          TopicConfigurations:
-#            - Event: s3:ObjectCreated:Put
-#              Topic: !Ref ImagesTopic
         CorsConfiguration:
           CorsRules:
             -
@@ -385,15 +224,6 @@ resources:
                 - HEAD
               MaxAge: 3000
 
-#    SendUploadNotificationsPermission:
-#      Type: AWS::Lambda::Permission
-#      Properties:
-#        FunctionName: !Ref SendUploadNotificationsLambdaFunction
-#        Principal: s3.amazonaws.com
-#        Action: lambda:InvokeFunction
-#        SourceAccount: !Ref AWS::AccountId
-#        SourceArn: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}
-
     BucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
@@ -407,101 +237,3 @@ resources:
               Action: 's3:GetObject'
               Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
         Bucket: !Ref AttachmentsBucket
-
-#    SNSTopicPolicy:
-#      Type: AWS::SNS::TopicPolicy
-#      Properties:
-#        PolicyDocument:
-#          Version: "2012-10-17"
-#          Statement:
-#            - Effect: Allow
-#              Principal:
-#                AWS: "*"
-#              Action: sns:Publish
-#              Resource:
-#                !Ref ImagesTopic
-#              Condition:
-#                ArnLike:
-#                  AWS:SourceArn: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}
-#        Topics:
-#          - !Ref ImagesTopic
-
-#    ThumbnailsBucket:
-#      Type: AWS::S3::Bucket
-#      Properties:
-#        BucketName: ${self:provider.environment.THUMBNAILS_S3_BUCKET}
-
-#    ImagesTopic:
-#      Type: AWS::SNS::Topic
-#      Properties:
-#        DisplayName: Image bucket topic
-#        TopicName: ${self:custom.topicName}
-
-#    ImagesSearch:
-#      Type: AWS::Elasticsearch::Domain
-#      Properties:
-#        ElasticsearchVersion: '6.3'
-#        DomainName: images-search-${self:provider.stage}
-#        ElasticsearchClusterConfig:
-#          DedicatedMasterEnabled: false
-#          InstanceCount: '1'
-#          ZoneAwarenessEnabled: false
-#          InstanceType: t2.small.elasticsearch
-#        EBSOptions:
-#          EBSEnabled: true
-#          Iops: 0
-#          VolumeSize: 10
-#          VolumeType: 'gp2'
-#
-#        AccessPolicies:
-#          Version: "2012-10-17"
-#          Statement:
-#            -
-#              Effect: Allow
-#              Principal:
-#                AWS: "*"
-#              Action: "es:ESHttp*"
-#              Condition:
-#                IpAddress:
-#                  aws:SourceIp:
-#                    - "181.127.158.133/32"
-#              Resource: !Sub "arn:aws:es:${self:provider.region}:318825288591:domain/images-search-${self:provider.stage}/*"
-#            -
-#              Effect: Allow
-#              Principal:
-#                AWS: !Sub "arn:aws:sts::318825288591:assumed-role/${self:service}-${self:provider.stage}-${self:provider.region}-lambdaRole/serverless-todo-app-${self:provider.stage}-SyncWithElasticsearch"
-#              Action: "es:ESHttp*"
-#              Resource: !Sub "arn:aws:es:${self:provider.region}:318825288591:domain/images-search-${self:provider.stage}/*"
-#    KMSKey:
-#      Type: AWS::KMS::Key
-#      Properties:
-#        Description: KMS key for auth0
-#        KeyPolicy:
-#          Version: '2012-10-17'
-#          Id: key-default-1
-#          Statement:
-#            - Sid: Allow administration of the key
-#              Effect: Allow
-#              Principal:
-#                AWS:
-#                  Fn::Join:
-#                    - ':'
-#                    - - 'arn:aws:iam:'
-#                      - !Ref AWS::AccountId
-#                      - 'root'
-#              Action:
-#                - 'kms:*'
-#              Resource: '*'
-#
-#    KMSKeyAlias:
-#      Type: AWS::KMS::Alias
-#      Properties:
-#        AliasName: alias/auth0Key-${self:provider.stage}
-#        TargetKeyId: !Ref KMSKey
-#
-#    Auth0Secret:
-#      Type: AWS::SecretsManager::Secret
-#      Properties:
-#        Name: ${self:provider.environment.AUTH_0_SECRET_ID}
-#        Description: Auth0 secret
-#        KmsKeyId: !Ref KMSKey

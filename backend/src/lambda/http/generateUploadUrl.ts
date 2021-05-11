@@ -12,16 +12,16 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
   const userId = getUserId(event)
 
   logger.info('creating image for todo ', todoId, ' for user ', userId)
-  const todoItem = await generateUrlImage(userId, todoId)
+  const uploadUrl = await generateUrlImage(userId, todoId)
 
   return {
-    statusCode: 201,
+    statusCode: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Credentials': true
     },
     body: JSON.stringify({
-      uploadUrl: todoItem.attachmentUrl
+      uploadUrl: uploadUrl
     })
   }
 }
